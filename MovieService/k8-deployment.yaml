@@ -1,0 +1,97 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: theatre-ms
+  name: theatre-ms
+spec:
+  ports:
+  - protocol: TCP
+    name: "80"
+    port: 80
+    targetPort: 80
+  selector:
+    app: theatre-ms
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+    app: theatre-ms
+  name: theatre-ms
+spec:
+  selector:
+    matchLabels:
+      app: theatre-ms
+  replicas: 1
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: theatre-ms
+    spec:
+      initContainers:
+      - name: init-container
+        image: localhost:5000/alpine-jre-8:latest
+        command: ["java", "-version"]
+      containers:
+      - name: theatre-ms
+        image: localhost:5000/theatre/theatre-ms:latest
+        command: ["java"]
+        args: ["-Xmx128m", "-Xss1m", "-jar", "-Dconsole.level=INFO", "/opt/lib/CasestudyApp.jar"]
+        livenessProbe:
+          httpGet:
+            path: /theatre/actuator
+            port: 80
+            httpHeaders:
+            - name: Content-Type
+              value: plain/text
+          failureThreshold: 10
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /theatre/actuator
+            port: 80
+          failureThreshold: 10
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        startupProbe:
+          tcpSocket:
+            port: 80
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        imagePullPolicy: "Always"
+        ports:
+        - containerPort: 80
+        resources:
+          limits:
+            cpu: "1"
+            memory: "1073741824"
+          requests:
+            cpu: 250m
+            memory: "536870912"
+      restartPolicy: Always
+status: {}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: theatre-ms-ingress
+  annotations:
+    #kubernetes.io/ingress.class: nginx
+spec:
+  rules:
+  - host: www.mytheatre.com
+    http:
+      paths:
+      - path: /theatre
+        pathType: Prefix
+        backend:
+          service:
+            name: theatre-ms
+            port:
+              number: 80

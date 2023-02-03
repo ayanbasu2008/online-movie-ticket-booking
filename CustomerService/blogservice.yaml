@@ -1,0 +1,34 @@
+##################################################################################################
+# blog-service
+##################################################################################################
+apiVersion: v1
+kind: Service
+metadata:
+  name: blogservice
+spec:
+  selector:
+    app: blogservice
+  ports:
+    - port: 80
+      targetPort: 8080
+  type: LoadBalancer
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: blogservice-deployment-v1
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: blogservice
+        version: v1
+    spec:
+      containers:
+      - name: cart
+        image: <your_dockerhub_id>/blogging-app
+
+        imagePullPolicy: Always
+        ports:
+          - containerPort: 8080
